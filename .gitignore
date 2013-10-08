@@ -33,3 +33,11 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+#Data projects
+*.data
+
+#otehr crap
+*~
+.*~
+.*.swp

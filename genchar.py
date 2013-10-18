@@ -18,9 +18,9 @@ def make_hidden_predict_outputs(hidden_size,characters_size,
 	p0 = U.create_shared(np.zeros(characters_size))
 	def step(score_t,gm,hidden_1,predict_1,W_i,b_i,W_o,b_o,W_pred,b_pred,W_back):
 		hidden  = T.nnet.sigmoid(
-				(T.dot(hidden_1,W_i) + b_i ) + \
-	#			(1-gm) * ( T.dot(hidden_1,W_i) + b_i ) + \
-	#			(gm  ) * ( T.dot(hidden_1,W_o) + b_o ) + \
+	#			(T.dot(hidden_1,W_i) + b_i ) + \
+				(1-gm) * ( T.dot(hidden_1,W_i) + b_i ) + \
+				(gm  ) * ( T.dot(hidden_1,W_o) + b_o ) + \
 				T.dot(predict_1,W_back) + \
 				score_t
 			)
@@ -105,8 +105,8 @@ def construct_network(context,characters,hidden):
 	weights = Ws_char_to_hidden + [
 					W_hidden_to_hidden_i,
 					b_hidden_i, 
-		#			W_hidden_to_hidden_o,
-		#			b_hidden_o, 
+					W_hidden_to_hidden_o,
+					b_hidden_o, 
 					W_hidden_to_predict,
 					b_predict,
 					W_predict_to_hidden
@@ -129,15 +129,17 @@ if __name__ == '__main__':
 	characters = len(load_data.chars)
 	hidden     = 200
 	X,Y,alpha,lr,updates,predictions,weights = construct_network(context,characters,hidden)
+	p = pickle.load(open('model.data'))
+	for W,pW in zip(weights,p['tunables']): W.set_value(pW)
 	data,labels,start_ends = load_data.load_data(sys.argv[1])
 	train,test = trainer(X,Y,alpha,lr,predictions,updates,data,labels)
 	print "Done."
 
-	lr    = 2
-	alpha = 0.5
-	decay = 0.95
+	lr    = 0.01
+	alpha = 0.0
+	decay = 0.99
 	train_set = start_ends[1:]
-	with open('error_switch','w') as f:
+	with open('continue','w') as f:
 		for epoch in xrange(200):
 			lr *= decay
 			for batch,(start,end) in enumerate(train_set):

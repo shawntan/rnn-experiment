@@ -10,8 +10,8 @@ def load_data(filename,batch_size=100):
 	X_words = [ "%s%s "%(w,"_"*len(w)) for w in words ]
 	Y_words = [ "%s%s "%(w,w) for w in words ]
 
-	X_wordnum = np.array([ [char_map[c]] for w in X_words for c in w ], dtype=np.int8)
-	Y_wordnum = np.array([  char_map[c]  for w in Y_words for c in w ], dtype=np.int8)
+	X_wordnum = np.array([ char_map[c] for w in X_words for c in w ], dtype=np.int8)
+	Y_wordnum = np.array([ char_map[c] for w in Y_words for c in w ], dtype=np.int8)
 	lengths = [ sum(len(w) for w in words[i*batch_size:(i+1)*batch_size])
 						for i in xrange(batches) ]
 	start_ends = []

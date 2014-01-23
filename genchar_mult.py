@@ -100,17 +100,17 @@ def construct_network(context,characters,hidden,mult_hidden):
 if __name__ == '__main__':
 	context     = 1
 	characters  = len(load_data.chars)
-	hidden      = 200
-	mult_hidden = 150
+	hidden      = 500
+	mult_hidden = 500
 	X,Y,alpha,lr,updates,predictions,weights = construct_network(context,characters,hidden,mult_hidden)
 	#p = pickle.load(open('model.data'))
 	#for W,pW in zip(weights,p['tunables']): W.set_value(pW)
 	data,labels,start_ends = load_data.load_data(sys.argv[1])
 	train,test = trainer(X,Y,alpha,lr,predictions,updates,data,labels)
 
-	lr    = 0.01
-	alpha = 0.0
-	decay = 0.99
+	lr    = 1
+	alpha = 0.5
+	decay = 0.95
 	train_set = start_ends[1:]
 	with open('continue','w') as f:
 		for epoch in xrange(200):

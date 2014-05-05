@@ -1,4 +1,3 @@
-# coding=utf-8
 import theano
 import math
 import utils
@@ -12,11 +11,19 @@ import cPickle as pickle
 import numpy as np
 from numpy_hinton import print_arr
 
-chars = np.fromstring("▁▂▃▄▅▆▇█",dtype="S3")
+def unroll(final_rep,W2_m,b2_m,W2_i,b2_i,n_steps):
+	def step(curr_rep,W2_m,b2_m,W2_i,b2_i):
+		next_rep  = T.dot(curr_rep,W2_m) + b2_m
+		input_rep = T.dot(curr_rep,W2_i) + b2_i
+		return next_rep,input_rep
+	[_,recon],_ = theano.scan(
+			step,
+			outputs_info = [final_rep,None],
+			non_sequences  = [W2_m,b2_m,W2_i,b2_i],
+			n_steps = n_steps
+		)
+	return recon
 
-def prob(p):
-	step = int(p*chars.shape[0])
-	return chars[min(step,7)]
 
 def make_rae(inputs,W1_m,W1_i,b_h,i_h,W2_m,b2_m,W2_i,b2_i):
 	def step(
@@ -26,9 +33,9 @@ def make_rae(inputs,W1_m,W1_i,b_h,i_h,W2_m,b2_m,W2_i,b2_i):
 		#		hidden = T.nnet.sigmoid(
 		hidden = T.tanh(
 				T.dot(hidden_1,W1_m) +\
-						T.dot(inputs,W1_i) +\
-						b_h
-						)
+				T.dot(inputs,W1_i) +\
+				b_h
+			)
 		reproduction_m = T.dot(hidden,W2_m) + b2_m
 		reproduction_i = T.dot(hidden,W2_i) + b2_i
 		return hidden,reproduction_m,reproduction_i
@@ -75,20 +82,29 @@ def build_network(input_size,hidden_size):
 			b_input_reproduction
 		)
 
-	return X,parameters,hidden,hidden1_reproduction,input_reproduction
+	unrolled = unroll(
+			hidden[-1],
+			W_hidden_to_hidden_reproduction,
+			b_hidden_reproduction,
+			W_hidden_to_input_reproduction,
+			b_input_reproduction,
+			hidden.shape[0]
+		)
+
+	return X,parameters,hidden,hidden1_reproduction,input_reproduction,unrolled
 
 
 def build_error(X,hidden,hidden1_reproduction,input_reproduction):
 	input_reproduction_sqerror  = T.sum((X - input_reproduction)**2)
-	hidden_reproduction_sqerror = T.sum((hidden - hidden1_reproduction)**2)
+	hidden_reproduction_sqerror = T.sum((hidden[:-1] - hidden1_reproduction[1:])**2)
 	return input_reproduction_sqerror + hidden_reproduction_sqerror
 
 if __name__ == '__main__':
-	X,parameters,hidden,hidden1_reproduction,input_reproduction = build_network(10,10)
+	X,parameters,hidden,hidden1_reproduction,input_reproduction,unrolled = build_network(10,10)
 	f = theano.function(
-			inputs = [X],
-			outputs = [hidden,hidden1_reproduction,input_reproduction]
-			)
+			inputs  = [X],
+			outputs = [hidden,hidden1_reproduction,input_reproduction,unrolled]
+		)
 
 	error = build_error(X,hidden,hidden1_reproduction,input_reproduction)
 	gradients = T.grad(error,wrt=parameters)
@@ -100,8 +116,11 @@ if __name__ == '__main__':
 			outputs = error
 		)
 	for _ in xrange(10000): print train(np.eye(10))
-	hidden, hidden_rep, input_rep = f(np.eye(10))
+
+	hidden, hidden_rep, input_rep, unrlld  = f(np.eye(10))
 
 	print_arr(hidden)
-	print_arr(np.abs(hidden-hidden_rep), hidden)
 	print_arr(input_rep)
+	print_arr(unrlld)
+#	print_arr(unrlld,hidden)
+#	print_arr(parameters[4].get_value())

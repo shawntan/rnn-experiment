@@ -12,9 +12,9 @@ def build_network(input_size,hidden_size):
 	b_output = U.create_shared(U.initial_weights(input_size))
 
 	hidden = T.nnet.sigmoid(T.dot(X,W_input_to_hidden))
-	output = T.nnet.softmax(T.dot(hidden,W_hidden_to_output) + b_output)
+	output = T.nnet.softmax(T.dot(hidden,W_input_to_hidden.T) + b_output)
 	
-	parameters = [W_input_to_hidden,W_hidden_to_output,b_output]
+	parameters = [W_input_to_hidden,b_output]
 
 	return X,output,parameters
 

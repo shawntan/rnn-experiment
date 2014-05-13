@@ -4,6 +4,7 @@ import numpy         as np
 import utils         as U
 from numpy_hinton import print_arr
 from theano.printing import Print
+
 def unroll(final_rep,W1_i,W1_m,b2_m,b2_i,n_steps):
 	def step(curr_rep,W1_m,b2_m,W1_i,b2_i):
 		next_rep  = T.dot(curr_rep,W1_m.T) + b2_m
@@ -19,19 +20,13 @@ def unroll(final_rep,W1_i,W1_m,b2_m,b2_i,n_steps):
 
 
 def make_rae(inputs,W1_i,W1_m,b_h,i_h,b2_m,b2_i):
-	def step(
-			inputs,
-			hidden_1,
-			W1_m,W1_i,b_h,b2_m,b2_i):
-		#		hidden = T.nnet.sigmoid(
-		hidden = T.tanh(
-					T.dot(hidden_1,W1_m) +\
-					T.dot(inputs,W1_i) +\
-					b_h
-			)
-#		hidden = Print('hidden vector\n')(hidden)
-#		W2_m = Print('weights to t-1\n')(W2_m)
 
+	def step(inputs,hidden_1,W1_m,W1_i,b_h,b2_m,b2_i):
+		hidden = T.tanh(
+				T.dot(hidden_1,W1_m) +\
+				T.dot(inputs,W1_i) +\
+				b_h
+			)
 		reproduction_m = T.dot(hidden,W1_m.T) + b2_m
 		reproduction_i = T.dot(hidden,W1_i.T) + b2_i
 		return hidden,reproduction_m,reproduction_i
@@ -48,14 +43,12 @@ def build_network(input_size,hidden_size):
 	X = T.dmatrix('X')
 	W_input_to_hidden  = U.create_shared(U.initial_weights(input_size,hidden_size))
 	W_hidden_to_hidden = U.create_shared(U.initial_weights(hidden_size,hidden_size))
-	b_hidden = U.create_shared(U.initial_weights(hidden_size))
-#	initial_hidden = U.create_shared(U.initial_weights(hidden_size))
 	initial_hidden = U.create_shared(U.initial_weights(hidden_size))
+	
+	b_hidden              = U.create_shared(U.initial_weights(hidden_size))
+	b_hidden_reproduction = U.create_shared(U.initial_weights(hidden_size))
+	b_input_reproduction  = U.create_shared(U.initial_weights(input_size))
 
-#	W_hidden_to_hidden_reproduction = W_hidden_to_hidden.T#U.create_shared(U.initial_weights(hidden_size,hidden_size))
-	b_hidden_reproduction           = U.create_shared(U.initial_weights(hidden_size))
-	W_hidden_to_input_reproduction  = W_input_to_hidden.T#U.create_shared(U.initial_weights(hidden_size,input_size))
-	b_input_reproduction            = U.create_shared(U.initial_weights(input_size))
 	parameters = [
 			W_input_to_hidden,
 			W_hidden_to_hidden,
@@ -101,25 +94,31 @@ if __name__ == '__main__':
 
 	error = build_error(X,hidden,hidden1_reproduction,input_reproduction)
 	gradients = T.grad(error,wrt=parameters)
+	
+	eps = T.dscalar('eps')
+	mu  = T.dscalar('mu')
+		
+	deltas = [ U.create_shared(np.zeros(p.get_value().shape)) for p in parameters ]
+	delta_nexts = [ mu*delta + eps*grad for delta,grad in zip(deltas,gradients) ]
+	delta_updates = [ (delta, delta_next) for delta,delta_next in zip(deltas,delta_nexts) ]
+	param_updates = [ (param, param - delta_next) for param,delta_next in zip(parameters,delta_nexts) ]
 
-	updates = [ (p, p - 0.5*g) for p,g in zip(parameters,gradients) ]
 	train = theano.function(
-			inputs = [X],
-			updates = updates,
+			inputs = [X,eps,mu],
+			updates = delta_updates + param_updates,
 			outputs = error
 		)
 
 	example = np.eye(8)
 	for _ in xrange(50000):
 		np.random.shuffle(example)
-		print train(example)
+		print train(example,0.001,0.999)
 	
 
 	np.random.shuffle(example)
 	hidden, hidden_rep, input_rep, unrlld  = f(example)
 
-	print_arr(hidden)
 	print_arr(example)
 	print_arr(unrlld)
+	print_arr(parameters[1].get_value())
 #	print_arr(unrlld,hidden)
-#	print_arr(parameters[4].get_value())

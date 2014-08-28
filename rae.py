@@ -20,7 +20,6 @@ def unroll(final_rep,W1_i,W1_m,b2_m,b2_i,n_steps):
 
 
 def make_rae(inputs,W1_i,W1_m,b_h,i_h,b2_m,b2_i):
-
 	def step(inputs,hidden_1,W1_m,W1_i,b_h,b2_m,b2_i):
 		hidden = T.tanh(
 				T.dot(hidden_1,W1_m) +\
@@ -106,7 +105,6 @@ if __name__ == '__main__':
 	
 	eps = T.dscalar('eps')
 	mu  = T.dscalar('mu')
-		
 	deltas = [ U.create_shared(np.zeros(p.get_value().shape)) for p in parameters ]
 	delta_nexts = [ mu*delta + eps*grad for delta,grad in zip(deltas,gradients) ]
 	delta_updates = [ (delta, delta_next) for delta,delta_next in zip(deltas,delta_nexts) ]

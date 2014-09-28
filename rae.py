@@ -1,10 +1,11 @@
 import theano
 import theano.tensor as T
 import numpy         as np
-import utils         as U
+from theano_toolkit import utils as U
+from theano_toolkit import updates
 from numpy_hinton import print_arr
 from theano.printing import Print
-
+import adadelta
 def unroll(final_rep,W1_i,W1_m,b2_m,b2_i,n_steps):
 	def step(curr_rep,W1_m,b2_m,W1_i,b2_i):
 		next_rep  = T.dot(curr_rep,W1_m.T) + b2_m
@@ -105,14 +106,10 @@ if __name__ == '__main__':
 	
 	eps = T.dscalar('eps')
 	mu  = T.dscalar('mu')
-	deltas = [ U.create_shared(np.zeros(p.get_value().shape)) for p in parameters ]
-	delta_nexts = [ mu*delta + eps*grad for delta,grad in zip(deltas,gradients) ]
-	delta_updates = [ (delta, delta_next) for delta,delta_next in zip(deltas,delta_nexts) ]
-	param_updates = [ (param, param - delta_next) for param,delta_next in zip(parameters,delta_nexts) ]
-
+	
 	train = theano.function(
 			inputs = [X,eps,mu],
-			updates = delta_updates + param_updates,
+			updates = updates.adadelta(parameters,gradients,mu,eps),
 			outputs = error
 		)
 
@@ -123,7 +120,8 @@ if __name__ == '__main__':
 	t = 0
 	while error > 0.0001:
 		np.random.shuffle(example)
-		error = train(example,lr,min(1 - 3.0/(t+5),0.999))
+		#error = train(example,lr,min(1 - 3.0/(t+5),0.999))
+		error = train(example,1e-6,0.95)
 		#error = train(example,lr,0)
 		print error
 		t += 1
